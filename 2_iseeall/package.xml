@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>2_iseeall</name>
+  <version>1.0.0</version>
+  <description>Task that teaches how to interact with camera</description>
+
+  <maintainer email="max8rr8@gmail.com">Max Ramanouski</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>rospy</build_depend>
+  <build_export_depend>rospy</build_export_depend>
+  <exec_depend>rospy</exec_depend>
+
+  <depend>gazebo_ros</depend>
+
+  <export>
+    <gazebo_ros gazebo_media_path="${prefix}" />
+    <gazebo_ros gazebo_model_path="${prefix}/models" />
+    <gazebo_ros gazebo_resource_path="${prefix}/resources" />
+  </export>
+</package>
