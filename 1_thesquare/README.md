@@ -63,25 +63,12 @@ Now with configured aruco map, we can start writing code to solve task. To contr
    navigate = rospy.ServiceProxy('navigate', srv.Navigate)
    ```
 
-4. When `navigate` is called clover starts to navigate to some point, but in most cases we also need to wait until it will arrive there. So let's add helper function that will navigate to some point and wait until clover arrives there:
-
-   ```py
-   def navigate_wait(x=0, y=0, z=0, yaw=float('nan'), speed=0.5, frame_id='', auto_arm=False, tolerance=0.2):
-       navigate(x=x, y=y, z=z, yaw=yaw, speed=speed,
-                frame_id=frame_id, auto_arm=auto_arm)
-
-       while not rospy.is_shutdown():
-           telem = get_telemetry(frame_id='navigate_target')
-           if math.sqrt(telem.x ** 2 + telem.y ** 2 + telem.z ** 2) < tolerance:
-               break
-           rospy.sleep(0.2)
-   ```
-
-5. Now let's takeoff and then land, just to test that everything is right:
+4. Let's takeoff and then land, just to test that everything is right:
 
    ```py
    print("Taking off...", end='')
-   navigate_wait(frame_id='body', auto_arm=True, z=1)
+   navigate(frame_id='body', auto_arm=True, z=1)
+   rospy.sleep(5)
    print(" success")
 
    # Land
@@ -89,7 +76,7 @@ Now with configured aruco map, we can start writing code to solve task. To contr
    land()
    ```
 
-6. Run this program:
+5. Run this program:
 
    ```bash
    python3 ./solution.py
@@ -97,25 +84,76 @@ Now with configured aruco map, we can start writing code to solve task. To contr
 
    Drone should take off, get points for Point A, then clover should land and get points for landing (resulting score 20). Use reset simulator to move everything to initial state.
 
+### Navigate and wait
+
+When `navigate` is called clover starts to navigate to some point, but in most cases we also need to wait until it will arrive there. To do that let's write helper function that will navigate to some point and wait until clover arrives there. This function will also print in terminal current point we are flying to and distance to it. 
+1. Our function will accept all arguments that `navigate` accepts, `tolerance` that specifies how close we except to clover be to target before we consider it arrived to point and also `point_name` which is current point name that we are flying to. The first thing function does is prints point we are flying to and then starting navigation to it:
+
+   ```py
+   def navigate_wait(point_name, x=0, y=0, z=0, 
+                     yaw=float('nan'), speed=0.5, frame_id='',    
+                     auto_arm=False, tolerance=0.1):
+
+      print(f"Navigating to point {point_name}: Started", end='')
+      
+      navigate(x=x, y=y, z=z, yaw=yaw, speed=speed,
+               frame_id=frame_id, auto_arm=auto_arm)
+   ```
+2. Now we will add loop that will run until distnace to destination is less than `tolerance`, create basic loop:
+   ```py
+   while not rospy.is_shutdown():
+      rospy.sleep(0.2)
+   ```
+3. Then we should get clover telemetry relative to `navigate_target`. `navigate_target` frame is relative to the point we are navigating to, so for example if we are flying to `x = 1` (relative to map) and our current `x = 0` (relative to map), in telemetry `navigate_target` we will see `x = -1`.
+   ```py
+   telem = get_telemetry(frame_id='navigate_target')
+   ```
+
+4. Using Pythagorean theorem we convert distance in xyz axis to actual distance and print it
+   ```py
+   dist = math.sqrt(telem.x ** 2 + telem.y ** 2 + telem.z ** 2)
+   print(f"\rNavigating to point {point_name}: distance={dist:.4f}  ", end='')
+   ```
+
+5. Then distance is lower than `tolerance` we have arrived, print arrived and exit loop:
+   ```py
+   if dist < tolerance:
+      print(f"\rNavigating to point {point_name}: arrived", " "*20)
+      break
+   ```
+
+Final function code looks like this:
+```py
+def navigate_wait(point_name, x=0, y=0, z=0, 
+                  yaw=float('nan'), speed=0.5, frame_id='',    
+                  auto_arm=False, tolerance=0.1):
+
+   print(f"Navigating to point {point_name}: Started", end='')
+   
+   navigate(x=x, y=y, z=z, yaw=yaw, speed=speed,
+            frame_id=frame_id, auto_arm=auto_arm)
+
+   while not rospy.is_shutdown():
+      telem = get_telemetry(frame_id='navigate_target')
+      dist = math.sqrt(telem.x ** 2 + telem.y ** 2 + telem.z ** 2)
+      print(f"\rNavigating to point {point_name}: distance={dist:.4f}", end='')
+
+      if dist < tolerance:
+         print(f"\rNavigating to point {point_name}: arrived", " " * 20)
+         break
+      rospy.sleep(0.2)
+   ```
+
 ### Let's finish it
 
 To get full score and finish task we need to add code to fly rectangle between takeoff and landing:
 
 ```py
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=0, y=0, z=1)
-print("Point A: Start rect")
-
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=1, y=0, z=1)
-print("Point B")
-
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=1, y=1, z=1)
-print("Point C")
-
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=0, y=1, z=1)
-print("Point D")
-
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=0, y=0, z=1)
-print("Point A: Finish rect")
+navigate_wait('Point A', frame_id='aruco_map', x=0, y=0, z=1)
+navigate_wait('Point B', frame_id='aruco_map', x=1, y=0, z=1)
+navigate_wait('Point C', frame_id='aruco_map', x=1, y=1, z=1)
+navigate_wait('Point D', frame_id='aruco_map', x=0, y=1, z=1)
+navigate_wait('Point A', frame_id='aruco_map', x=0, y=0, z=1)
 ```
 
 After running this program, you should get full score (you can check it in Cloversim WebUI or `Simulator control` view of ide)
@@ -134,37 +172,38 @@ land = rospy.ServiceProxy('land', Trigger)
 get_telemetry = rospy.ServiceProxy('get_telemetry', srv.GetTelemetry)
 navigate = rospy.ServiceProxy('navigate', srv.Navigate)
 
+def navigate_wait(point_name, x=0, y=0, z=0, 
+                  yaw=float('nan'), speed=0.5, frame_id='',    
+                  auto_arm=False, tolerance=0.1):
 
-def navigate_wait(x=0, y=0, z=0, yaw=float('nan'), speed=0.5, frame_id='', auto_arm=False, tolerance=0.2):
-    navigate(x=x, y=y, z=z, yaw=yaw, speed=speed,
-             frame_id=frame_id, auto_arm=auto_arm)
+   print(f"Navigating to point {point_name}: Started", end='')
+   
+   navigate(x=x, y=y, z=z, yaw=yaw, speed=speed,
+            frame_id=frame_id, auto_arm=auto_arm)
 
-    while not rospy.is_shutdown():
-        telem = get_telemetry(frame_id='navigate_target')
-        if math.sqrt(telem.x ** 2 + telem.y ** 2 + telem.z ** 2) < tolerance:
-            break
-        rospy.sleep(0.2)
+   while not rospy.is_shutdown():
+      telem = get_telemetry(frame_id='navigate_target')
+      dist = math.sqrt(telem.x ** 2 + telem.y ** 2 + telem.z ** 2)
+      print(f"\rNavigating to point {point_name}: distance={dist:.4f}  ", end='')
 
+      if dist < tolerance:
+         print(f"\rNavigating to point {point_name}: arrived", " "*20)
+         break
+      rospy.sleep(0.2)
 
 print("Taking off...", end='')
-navigate_wait(frame_id='body', auto_arm=True, z=1)
+navigate(frame_id='body', auto_arm=True, z=1)
+rospy.sleep(5)
 print(" success")
 
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=0, y=0, z=1)
-print("Point A: Start rect")
+# Fly rectangle
+navigate_wait('Point A', frame_id='aruco_map', x=0, y=0, z=1)
+navigate_wait('Point B', frame_id='aruco_map', x=1, y=0, z=1)
+navigate_wait('Point C', frame_id='aruco_map', x=1, y=1, z=1)
+navigate_wait('Point D', frame_id='aruco_map', x=0, y=1, z=1)
+navigate_wait('Point A', frame_id='aruco_map', x=0, y=0, z=1)
 
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=1, y=0, z=1)
-print("Point B")
-
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=1, y=1, z=1)
-print("Point C")
-
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=0, y=1, z=1)
-print("Point D")
-
-navigate_wait(frame_id='aruco_map', auto_arm=True, x=0, y=0, z=1)
-print("Point A: Finish rect")
-
+# Land
 print("Landing...")
 land()
 ```
