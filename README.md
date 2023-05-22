@@ -13,7 +13,7 @@ Then tasks will be available to be started via cloversim WebUI or from cli.
 * [1_thesquare](./1_thesquare/README.md) - First task of cloversim course with goal to fly square
 * [2_iseeall](./2_iseeall/README.md) - Task that teaches how to interact with camera
 * [3_landmid](./3_landmid/README.md) - Find and land onto randomly positioned object
+* [4_flybyline](./4_flybyline/README.md) - Fly along the line
 
 ### Planned
-* 4_flybyline - Flying along the line
 * 5_posknown - Find posision of objects relative to aruco map

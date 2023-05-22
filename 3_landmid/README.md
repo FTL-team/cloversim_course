@@ -34,7 +34,7 @@ This task will teach you how to land Clover in the middle of something, in this 
 4. Now we need to takeoff and then we can start on landing algorithm
    ```py
    navigate(z=2, yaw=0, frame_id='body', auto_arm=True)
-   rospy.sleep(5):
+   rospy.sleep(5)
    ```
 
 ### Main algorithm
@@ -119,7 +119,9 @@ Now let's implement:
          target_vz = -0.1
    ```
 
-After running this program, clover should takeoff, find and land onto orange landing pad
+After running this program, clover should takeoff, find and land onto orange landing pad.
+
+You should try this program with different seeds to ensure that it works correctly for different pad positions.
 
 ## Full code
 
